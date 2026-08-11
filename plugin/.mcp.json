@@ -3,11 +3,13 @@
     "command": "npx",
     "args": [
       "-y",
-      "comfyui-mcp",
+      "github:neverprepared/comfyui-mcp#v0.50.108-np.1",
       "--full"
     ],
     "env": {
-      "CIVITAI_API_TOKEN": ""
+      "CIVITAI_API_TOKEN": "",
+      "COMFYUI_MCP_AUTO_UPDATE_DISABLE": "1",
+      "COMFYUI_MCP_AUTOUPDATE": "0"
     }
   }
 }
