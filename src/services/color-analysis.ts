@@ -118,17 +118,20 @@ async function resolveBytes(opts: AnalyzeColorOptions): Promise<Buffer> {
   );
 }
 
-// Allow an absolute path anywhere readable, or a path under the ComfyUI output
-// dir. Reject parent-dir escapes on relative inputs.
+// Contain BOTH absolute and relative inputs to the ComfyUI output dir. An
+// absolute path was previously returned unchecked (`return resolve(path)`),
+// letting a tool caller read any file on disk (e.g. get_image analyze_color
+// reference_path:"/etc/passwd") — an arbitrary-read / error-oracle primitive
+// reachable by the driving LLM. This now matches the containment the sibling
+// image-convert.ts resolveOutputPath enforces.
 async function resolveSafePath(path: string): Promise<string> {
   if (path.trim().length === 0) {
     throw new ValidationError("path must be a non-empty string.");
   }
-  if (isAbsolute(path)) return resolve(path);
   const outputDir = await resolveOutputDir();
-  const resolved = resolve(outputDir, path);
+  const resolved = isAbsolute(path) ? resolve(path) : resolve(outputDir, path);
   if (resolved !== outputDir && !resolved.startsWith(outputDir + sep)) {
-    throw new ValidationError("relative path must stay within the ComfyUI output directory.");
+    throw new ValidationError("path must stay within the ComfyUI output directory.");
   }
   return resolved;
 }
