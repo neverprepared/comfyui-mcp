@@ -8,6 +8,8 @@ import { getClient, getLogs, getSystemStats, comfyApiFetch } from "../comfyui/cl
 import { getExtraModelRoots, getLiveExtraModelRoots } from "./extra-paths.js";
 import { resolveEffectiveComfyUIBase, resolveLiveServerRoot } from "./workspace-env.js";
 import { installModelViaManager } from "./node-management.js";
+import { assertSafeUrl } from "./workflow-url.js";
+import { isS3Url } from "./storage/s3.js";
 import { ModelError, ValidationError, unreachableHostMessage } from "../utils/errors.js";
 import { logger } from "../utils/logger.js";
 import { downloadWithCache, probeRemoteModelPayload } from "./download-cache.js";
@@ -2865,6 +2867,21 @@ export async function downloadModel(
   // funnels through (local disk AND the remote Manager dispatch below).
   const wasHfUrl = /^https?:\/\/huggingface\.co([/?#]|$)/i.test(url);
   url = applyHfEndpoint(url);
+  // SSRF guard (parity with the workflow-url fetch path): for the http(s) URLs
+  // we — or the ComfyUI host, or the MCP-side auth-gate probe — fetch directly,
+  // reject non-fetchable schemes and internal/loopback/link-local/metadata/
+  // private/CGNAT hosts before any network dispatch. Applied at the choke point
+  // every download funnels through, so it covers the local streaming fetch, the
+  // MCP-side probe, and the remote ComfyUI-Manager dispatch. Model URLs are
+  // public (civitai/hf/github/...), so this never blocks a legitimate download
+  // but does stop `download_model url:"http://169.254.169.254/..."` (cloud
+  // metadata) and internal-host scans. Cloud-storage transfers are exempt:
+  // s3:// is an SDK transfer using the caller's own endpoint+credential bundle
+  // (dispatched below), and Azure Blob URLs are https to *.blob.core.windows.net
+  // (a public host) that pass this guard unchanged. See workflow-url.ts.
+  if (!isS3Url(url)) {
+    assertSafeUrl(url);
+  }
   if (isCivitaiUrl(url) && civitaiDisabled()) {
     throw new ModelError(CIVITAI_DISABLED_MESSAGE);
   }
