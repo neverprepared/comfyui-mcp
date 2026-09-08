@@ -32,7 +32,7 @@ npm start            # node dist/index.js
 CI-enforced gates (`.github/workflows/ci.yml`) — run these before pushing:
 
 ```bash
-npm run docs:gen              # regenerate docs/tools/*.mdx; must be a NO-OP in CI
+npm run docs:gen              # rebuild docs/tools/*.mdx; must be a NO-OP in CI
 npm run vocab:export -- --check   # docs/design/tool-vocabulary.json must be current
 npm run check:vocabulary      # no live references to retired tool names
 npm run check:unknown-collapse    # "could not determine" must not collapse to a false negative
@@ -88,12 +88,14 @@ The live surface is **37 tools**, listed canonically in `src/tools/vocabulary.ts
 `apply_manifest`, `list_packs`, `calculate`, `train_prepare_dataset`, `train_start`, `train_doctor`,
 `apps`, `batch` — plus autoloaded saved workflows registered at runtime.
 
-Many older tool names were **consolidated into `action:` parameters** on the survivors (e.g.
-`search_models` → `download_model`, `get_queue` → `queue`, the generate_* family →
-`generate_image`, `analyze_color`/`convert_image` → `get_image`). `docs/design/tool-surface.txt`
-is a **historical cumulative ledger**, not the live surface — do not read it as such. Retired
-names live in `DEAD_NAMES` and are redirected by `src/tools/retired-redirect.ts`; referring to one
-in a hint string is a CI failure (`npm run check:vocabulary`).
+Many older tool names were **consolidated into `action:` parameters** on the survivors — a
+model-search tool folded into `download_model`, a queue-reading tool into `queue`, the whole
+per-model generate family into `generate_image`, and the image analysis/conversion tools into
+`get_image`. `docs/design/tool-surface.txt` is a **historical cumulative ledger**, not the live
+surface — do not read it as such. Every retired name and its replacement is listed in
+`DEAD_NAMES` in `src/tools/vocabulary.ts` and redirected by `src/tools/retired-redirect.ts`.
+Writing a retired name into prose or a hint string is a CI failure
+(`npm run check:vocabulary`) — which is why this file names none of them literally.
 
 Two extra surfaces layer on top:
 
@@ -146,3 +148,12 @@ Key env vars: `COMFYUI_URL`, `COMFYUI_MCP_TOOL_MODE`, `MCP_TRANSPORT`, `MCP_HOST
 environment-sensitive (host `~/.codex` state, `rename()` EISDIR behaviour), not caused by
 repository changes. Do not treat them as a signal that your change broke something; do check
 that you have not added to them.
+
+`npm run check:vocabulary` also **fails on a clean `main`**, on a single pre-existing hit in
+`src/services/color-analysis.ts:123` (a comment naming a retired name). The fix is either to
+reword that comment or to add the path to that name's `allowedIn` in `src/tools/vocabulary.ts`
+with a reason — do not widen the historical path list. `npm run vocab:export -- --check`,
+`npm run check:unknown-collapse` and `node scripts/asset-counts.mjs --check` all pass.
+
+Note also that **GitHub Actions produce no check runs on this fork** — the workflows are active
+but have never been triggered here. Verify locally before merging; CI will not do it for you.
