@@ -39,6 +39,10 @@ npm run check:unknown-collapse    # "could not determine" must not collapse to a
 node scripts/asset-counts.mjs --check   # README tool/skill/pack counts must match the registry
 ```
 
+A second, path-filtered workflow (`.github/workflows/packs.yml`) runs `packs:validate`, a
+`packs:gen` staleness check, `scripts/test-packs.sh` and `check-model-urls.mjs` — but only when
+`packs/**` or its scripts change.
+
 Other useful scripts: `npm run smoke` (pack + install a tarball into a clean project),
 `npm run smoke:panel`, `npm run test:integration` (needs a live ComfyUI; `COMFYUI_INTEGRATION=true`),
 `npm run arena` (LLM Arena benchmark), `npm run packs:validate` / `packs:gen` / `packs:test`.
@@ -64,7 +68,7 @@ src/
   experimental/   # agent PoC (npm run dev:agent-poc)
   __tests__/      # vitest, mirroring the source path
 plugin/           # Claude Code plugin: 38 skills, 11 slash commands, 4 agents, hooks
-packs/            # 57 installer packs (pack.yaml + manifest.yaml + workflow.json + installers)
+packs/            # 56 installer packs (pack.yaml + manifest.yaml + workflow.json + installers)
 scripts/          # build/docs/check/arena/pack utilities
 docs/             # Mintlify site; docs/tools/*.mdx is GENERATED (npm run docs:gen)
 ```
@@ -93,9 +97,10 @@ in a hint string is a CI failure (`npm run check:vocabulary`).
 
 Two extra surfaces layer on top:
 
-- **Compact mode** (`--compact`, the default) exposes only `list_tools` / `describe_tool` /
-  `call_tool` so small/local models stay effective; `--full` registers the direct surface (and
-  still layers the facade unless `COMFYUI_MCP_NO_FACADE=1`).
+- **Compact mode** (`--compact` / `COMFYUI_MCP_TOOL_MODE=compact`) exposes only `list_tools` /
+  `describe_tool` / `call_tool` so small/local models stay effective. It is **opt-in**: `full`
+  has been the default since 0.50.0 (`src/transport/cli.ts`), and full still layers the
+  `call_tool` facade on top unless `COMFYUI_MCP_NO_FACADE=1`.
 - **Blind mode** (`COMFYUI_MCP_BLIND=1`) scrubs every image block from every tool result at the
   single registration boundary in `src/tools/index.ts` — never add a per-tool opt-in.
 
